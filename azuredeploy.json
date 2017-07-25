@@ -250,7 +250,7 @@
           "dataDisks": [
             {
               "name": "datadisk1",
-              "diskSizeGB": "1000",
+              "diskSizeGB": "1023",
               "lun": 0,
               "vhd": {
                 "Uri": "[concat('http://', parameters('storageAccountName'), copyindex(),'.blob.core.windows.net/vhds/', parameters('vmNamePrefix'), copyIndex(), 'datadisk1.vhd')]"

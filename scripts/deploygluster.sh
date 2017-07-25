@@ -78,13 +78,19 @@ create_raid0_centos() {
 do_partition() {
 # This function creates one (1) primary partition on the
 # disk, using all available space
-    DISK=${1}
-    echo "Partitioning disk $DISK"
-    echo "n
-p
-1
-w
-" | fdisk "${DISK}" 
+#    DISK=${1}
+#    echo "Partitioning disk $DISK"
+#    echo "n
+#p
+#1
+#w
+#" | fdisk "${DISK}" 
+
+echo "unit: sectors
+
+/dev/sdc1 : start=     2048, size=4242012160, Id=83
+" | sfdisk "${DISK}"
+
 #> /dev/null 2>&1
 
 #
