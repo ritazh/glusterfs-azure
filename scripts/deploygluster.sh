@@ -83,7 +83,7 @@ do_partition() {
     echo "Partitioning disk $DISK"
     parted -s ${DISK} mklabel gpt
     parted -a opt -s ${DISK} mkpart primary 0% 100%
-    
+
 # Use the bash-specific $PIPESTATUS to ensure we get the correct exit code
 # from fdisk and not from echo
 if [ ${PIPESTATUS[1]} -ne 0 ];
@@ -241,11 +241,11 @@ install_glusterfs_centos() {
         wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
         rpm -Uvh ./epel-release-latest-7*.rpm
         rm ./epel-release-latest-7*.rpm
-        yum -y update
+        #yum -y update
     fi
     
     echo "installing gluster"
-    yum -y update
+    #yum -y update
     yum install centos-release-gluster37
     yum install glusterfs gluster-cli glusterfs-libs glusterfs-server
 }
