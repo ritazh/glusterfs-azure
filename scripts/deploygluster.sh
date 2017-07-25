@@ -88,7 +88,7 @@ do_partition() {
 
     echo "unit: sectors
 
-/dev/md127 : start=     2048, size=4242012160, Id=83
+$RAIDPARTITION: start=     2048, size=4242012160, Id=83
 " | sfdisk "${DISK}"
 
 #> /dev/null 2>&1
