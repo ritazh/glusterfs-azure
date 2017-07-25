@@ -78,16 +78,12 @@ create_raid0_centos() {
 do_partition() {
 # This function creates one (1) primary partition on the
 # disk, using all available space
+
     DISK=${1}
     echo "Partitioning disk $DISK"
-    echo "n
-p
-1
-w
-" | fdisk "${DISK}" 
-#> /dev/null 2>&1
-
-#
+    parted -s ${DISK} mklabel gpt
+    parted -a opt -s ${DISK} mkpart primary 0% 100%
+    
 # Use the bash-specific $PIPESTATUS to ensure we get the correct exit code
 # from fdisk and not from echo
 if [ ${PIPESTATUS[1]} -ne 0 ];
