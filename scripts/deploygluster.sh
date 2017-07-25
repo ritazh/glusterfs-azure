@@ -246,19 +246,17 @@ install_glusterfs_centos() {
     
     echo "installing gluster"
     #yum -y update
-    yum install centos-release-gluster37
-    yum install glusterfs gluster-cli glusterfs-libs glusterfs-server
+    yum -y install centos-release-gluster
+    yum -y install glusterfs gluster-cli glusterfs-libs glusterfs-server
 }
 
 configure_gluster() {
     if [ $iscentos -eq 0 ];
     then
-        /etc/init.d/glusterd status
-        if [ ${?} -ne 0 ];
-        then
-            install_glusterfs_centos
-        fi
-        /etc/init.d/glusterd start        
+        install_glusterfs_centos
+        systemctl enable glusterd
+        systemctl start glusterd
+
     elif [ $isubuntu -eq 0 ];
     then
         /etc/init.d/glusterfs-server status
