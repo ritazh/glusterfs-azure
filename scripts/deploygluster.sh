@@ -30,7 +30,7 @@ check_os() {
     isubuntu=${?}
     grep centos /proc/version > /dev/null 2>&1
     iscentos=${?}
-    grep 'Red Hat Enterprise Linux' /proc/version > /dev/null 2>&1
+    grep 'redhat' /proc/version > /dev/null 2>&1
     isrhel=${?}
 }
 
