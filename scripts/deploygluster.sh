@@ -171,6 +171,7 @@ configure_disks() {
 }
 
 open_ports() {
+    echo "open_ports"
     index=0
     while [ $index -lt $NODECOUNT ]; do
         if [ $index -ne $NODEINDEX ]; then
@@ -182,6 +183,7 @@ open_ports() {
         let index++
     done
     iptables-save
+    echo "done open_ports"
 }
 
 disable_apparmor_ubuntu() {
@@ -296,6 +298,7 @@ configure_gluster() {
         install_glusterfs_rhel
         systemctl enable glusterd
         systemctl start glusterd
+        open_ports
 
     elif [ $isubuntu -eq 0 ];
     then
@@ -318,7 +321,7 @@ configure_gluster() {
     then
         return
     fi
-    
+
     allNodes="${NODENAME}:${GLUSTERDIR}"
     retry=10
     failed=1
