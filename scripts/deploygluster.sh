@@ -294,6 +294,8 @@ configure_gluster() {
     then
         echo 'isrhel'
         install_glusterfs_rhel
+        systemctl enable glusterd
+        systemctl start glusterd
 
     elif [ $isubuntu -eq 0 ];
     then
