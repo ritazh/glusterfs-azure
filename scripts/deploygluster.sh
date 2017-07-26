@@ -13,6 +13,9 @@ PEERNODEIPPREFIX=${2}
 VOLUMENAME=${3}
 NODEINDEX=${4}
 NODECOUNT=${5}
+RHSMUSERNAME=${6}
+RHSMPASSWORD=${7}
+RHSMPOOLID=${8}
 
 MOUNTPOINT="/datadrive"
 RAIDCHUNKSIZE=128
@@ -27,6 +30,8 @@ check_os() {
     isubuntu=${?}
     grep centos /proc/version > /dev/null 2>&1
     iscentos=${?}
+    grep 'Red Hat Enterprise Linux' /proc/version > /dev/null 2>&1
+    isrhel=${?}
 }
 
 scan_for_new_disks() {
@@ -120,7 +125,7 @@ configure_disks() {
     echo "Disk count is $DISKCOUNT"
     if [ $DISKCOUNT -gt 1 ];
     then
-        if [ $iscentos -eq 0 ];
+        if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
         then
             create_raid0_centos
         elif [ $isubuntu -eq 0 ];
@@ -196,7 +201,7 @@ activate_secondnic_ubuntu() {
 
 configure_network() {
     open_ports
-    if [ $iscentos -eq 0 ];
+    if [ $iscentos -eq 0 -o $isrhel -eq 0];
     then
         activate_secondnic_centos
         disable_selinux_centos
@@ -250,12 +255,24 @@ install_glusterfs_centos() {
     yum -y install glusterfs gluster-cli glusterfs-libs glusterfs-server
 }
 
+install_glusterfs_rhel() {
+    
+    echo "installing gluster"
+    yum install redhat-storage-server
+    echo "done installing gluster"
+}
+
 configure_gluster() {
     if [ $iscentos -eq 0 ];
     then
         install_glusterfs_centos
         systemctl enable glusterd
         systemctl start glusterd
+
+    elif [ $isrhel -eq 0 ];
+    then
+        echo 'isrhel'
+        install_glusterfs_rhel
 
     elif [ $isubuntu -eq 0 ];
     then
@@ -324,7 +341,7 @@ allow_passwordssh() {
     fi
     sed -i "s/^#PasswordAuthentication.*/PasswordAuthentication yes/I" /etc/ssh/sshd_config
     sed -i "s/^PasswordAuthentication no.*/PasswordAuthentication yes/I" /etc/ssh/sshd_config
-    if [ $iscentos -eq 0 ];
+    if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
     then
         /etc/init.d/sshd reload
     elif [ $isubuntu -eq 0 ];
@@ -333,16 +350,51 @@ allow_passwordssh() {
     fi
 }
 
+configure_rhsub(){
+    # Register Host with Cloud Access Subscription
+    echo $(date) " - Register host with Cloud Access Subscription"
+    subscription-manager register --username="$RHSMUSERNAME" --password="$RHSMPASSWORD"
+
+    if [ $? -eq 0 ]
+    then
+       echo "Subscribed successfully"
+    else
+       echo "Incorrect Username and Password specified"
+       exit 3
+    fi
+
+    subscription-manager attach --pool=$RHSMPOOLID > attach.log
+    if [ $? -eq 0 ]
+    then
+       echo "Pool attached successfully"
+    else
+       evaluate=$( cut -f 2-5 -d ' ' attach.log )
+       if [[ $evaluate == "unit has already had" ]]
+          then
+             echo "Pool $POOL_ID was already attached and was not attached again."
+          else
+             echo "Incorrect Pool ID or no entitlements available"
+             exit 4
+       fi
+    fi
+
+    echo "Enable RHEL repos"
+    subscription-manager repos --enable=rhel-7-server-rpms
+    subscription-manager repos --enable=rh-gluster-3-for-rhel-7-server-rpms
+    rpm -q kernel
+}
+
 check_os
 
 # temporary workaround form CRP 
 allow_passwordssh  
 
-if [ $iscentos -ne 0 ] && [ $isubuntu -ne 0];
+if [ $iscentos -ne 0 ] && [ $isubuntu -ne 0] && [ $isrhel -ne 0];
 then
     echo "unsupported operating system"
     exit 1 
 else
+    configure_rhsub
     configure_network
     configure_disks
     configure_gluster

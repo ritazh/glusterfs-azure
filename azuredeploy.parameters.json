@@ -16,6 +16,15 @@
     },
     "vmNamePrefix": {
       "value": "testVM"
-    }
+    },
+	"rhsmUsername": {
+		"value": "changeme"
+	},
+	"rhsmPassword": {
+		"value": "changeme"
+	},
+	"rhsmPoolId": {
+		"value": "changeme"
+	}
   }
 }
