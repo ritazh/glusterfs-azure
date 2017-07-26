@@ -279,7 +279,7 @@ install_glusterfs_centos() {
 install_glusterfs_rhel() {
     
     echo "installing gluster"
-    yum install redhat-storage-server
+    yum -y install redhat-storage-server
     echo "done installing gluster"
 }
 
