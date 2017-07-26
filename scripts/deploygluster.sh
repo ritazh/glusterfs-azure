@@ -89,14 +89,14 @@ do_partition() {
     parted -s ${DISK} mklabel gpt
     parted -a opt -s ${DISK} mkpart primary 0% 100%
 
-# Use the bash-specific $PIPESTATUS to ensure we get the correct exit code
-# from fdisk and not from echo
-if [ ${PIPESTATUS[1]} -ne 0 ];
-then
-    echo "An error occurred partitioning ${DISK}" >&2
-    echo "I cannot continue" >&2
-    exit 2
-fi
+    # Use the bash-specific $PIPESTATUS to ensure we get the correct exit code
+    # from fdisk and not from echo
+    if [ ${PIPESTATUS[1]} -ne 0 ];
+    then
+        echo "An error occurred partitioning ${DISK}" >&2
+        echo "I cannot continue" >&2
+        exit 2
+    fi
 }
 
 add_to_fstab() {
@@ -110,6 +110,26 @@ add_to_fstab() {
         LINE="UUID=${UUID} ${MOUNTPOINT} ext4 defaults,noatime 0 0"
         echo -e "${LINE}" >> /etc/fstab
     fi
+}
+
+partition_mountall_centos() {
+    echo "partition_mountall_centos"
+    DISKS=($(scan_for_new_disks))
+    for DISK in "${DISKS[@]}";
+    do 
+        echo "processing ${DISK}"
+        do_partition ${DISK}
+        PARTITION=$(ls ${DISK}?) 
+
+        echo "Creating filesystem on ${PARTITION}."
+        mkfs -t ext4 ${PARTITION}
+        mkdir "${MOUNTPOINT}-${DISK}"
+        read UUID FS_TYPE < <(blkid -u filesystem ${PARTITION}|awk -F "[= ]" '{print $3" "$5}'|tr -d "\"")
+        add_to_fstab "${UUID}" "${MOUNTPOINT}-${DISK}"
+        echo "Mounting disk ${PARTITION} on ${MOUNTPOINT}-${DISK}"
+        mount "${MOUNTPOINT}-${DISK}"
+    done;
+    echo "done partition_mountall_centos"
 }
 
 configure_disks() {
@@ -128,6 +148,7 @@ configure_disks() {
         if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
         then
             create_raid0_centos
+            #partition_mountall_centos
         elif [ $isubuntu -eq 0 ];
         then
             create_raid0_ubuntu
@@ -137,7 +158,7 @@ configure_disks() {
     else
         DISK="${DISKS[0]}"
         do_partition ${DISK}
-        PARTITION=$(fdisk -l ${DISK}|grep -A 1 Device|tail -n 1|awk '{print $1}')
+        PARTITION=$(ls ${DISK}?)
     fi
 
     echo "Creating filesystem on ${PARTITION}."
@@ -201,7 +222,7 @@ activate_secondnic_ubuntu() {
 
 configure_network() {
     open_ports
-    if [ $iscentos -eq 0 -o $isrhel -eq 0];
+    if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
     then
         activate_secondnic_centos
         disable_selinux_centos
@@ -389,7 +410,7 @@ check_os
 # temporary workaround form CRP 
 allow_passwordssh  
 
-if [ $iscentos -ne 0 ] && [ $isubuntu -ne 0] && [ $isrhel -ne 0];
+if [ $iscentos -ne 0 ] && [ $isubuntu -ne 0 ] && [ $isrhel -ne 0 ];
 then
     echo "unsupported operating system"
     exit 1 
