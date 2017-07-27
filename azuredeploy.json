@@ -316,7 +316,9 @@
         "settings": {
           "fileUris": [
             "[parameters('customScriptFilePath')]"
-          ],
+          ]
+        },
+		"protectedSettings": {
           "commandToExecute": "[concat(parameters('customScriptCommandToExecute'), ' ', parameters('vmNamePrefix'), ' ', parameters('vmIPPrefix'), ' ', parameters('volumeName'), ' ', copyindex(), ' ', parameters('nodeNumber'), ' ', parameters('rhsmUsername'), ' ', parameters('rhsmPassword'), ' ', parameters('rhsmPoolId'))]"
         }
       }
