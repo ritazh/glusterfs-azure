@@ -298,7 +298,8 @@ configure_gluster() {
         install_glusterfs_rhel
         systemctl enable glusterd
         systemctl start glusterd
-        open_ports
+        firewall-cmd --zone=public --add-port=24007-24008/tcp --permanent
+        firewall-cmd --reload
 
     elif [ $isubuntu -eq 0 ];
     then
@@ -354,9 +355,11 @@ configure_gluster() {
     done
 
     sleep 60
+    echo "creating gluster volume"
     gluster volume create ${VOLUMENAME} rep 2 transport tcp ${allNodes} 2>> /tmp/error
     gluster volume info 2>> /tmp/error
     gluster volume start ${VOLUMENAME} 2>> /tmp/error
+    echo "done creating gluster volume"
 }
 
 allow_passwordssh() {
