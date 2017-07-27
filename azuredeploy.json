@@ -94,7 +94,7 @@
     },
     "customScriptFilePath": {
       "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/ritazh/glusterfs-azure/master/scripts/deploygluster.sh",
+      "defaultValue": "https://raw.githubusercontent.com/ritazh/glusterfs-azure/managed/scripts/deploygluster.sh",
       "metadata": {
         "description": "GitHub location of the custom script that configures Gluster"
       }
@@ -238,7 +238,7 @@
       }
     },
     {
-      "apiVersion": "2015-05-01-preview",
+      "apiVersion": "2016-04-30-preview",
       "type": "Microsoft.Compute/virtualMachines",
       "name": "[concat(parameters('vmNamePrefix'), copyindex())]",
       "location": "[resourceGroup().location]",
@@ -276,22 +276,16 @@
           },
           "dataDisks": [
             {
-              "name": "datadisk1",
-              "diskSizeGB": "1000",
-              "lun": 0,
-              "vhd": {
-                "Uri": "[concat('http://', parameters('storageAccountName'), copyindex(),'.blob.core.windows.net/vhds/', parameters('vmNamePrefix'), copyIndex(), 'datadisk1.vhd')]"
-              },
-              "createOption": "Empty"
+                "lun": 0,
+                "diskSizeGB": "1023",
+                "name": "[concat(parameters('vmNamePrefix'), copyindex(),'-datadisk1')]",
+                "createOption": "empty"
             },
             {
-              "name": "datadisk2",
-              "diskSizeGB": "1000",
-              "lun": 1,
-              "vhd": {
-                "Uri": "[concat('http://', parameters('storageAccountName'), copyindex(),'.blob.core.windows.net/vhds/', parameters('vmNamePrefix'), copyIndex(), 'datadisk2.vhd')]"
-              },
-              "createOption": "Empty"
+                "lun": 1,
+                "diskSizeGB": "1023",
+                "name": "[concat(parameters('vmNamePrefix'), copyindex(),'-datadisk2')]",
+                "createOption": "empty"
             }
           ]
         },
