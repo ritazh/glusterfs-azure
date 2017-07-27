@@ -8,7 +8,7 @@
     "virtualNetworkName": {
       "value": "testVnet"
     },
-    "adminUserName": {
+    "adminUsername": {
       "value": "username"
     },
     "adminPassword": {
@@ -16,6 +16,15 @@
     },
     "vmNamePrefix": {
       "value": "testVM"
-    }
+    },
+	"rhsmUsername": {
+		"value": "changeme"
+	},
+	"rhsmPassword": {
+		"value": "changeme"
+	},
+	"rhsmPoolId": {
+		"value": "changeme"
+	}
   }
 }

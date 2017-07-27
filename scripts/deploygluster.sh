@@ -13,6 +13,9 @@ PEERNODEIPPREFIX=${2}
 VOLUMENAME=${3}
 NODEINDEX=${4}
 NODECOUNT=${5}
+RHSMUSERNAME=${6}
+RHSMPASSWORD=${7}
+RHSMPOOLID=${8}
 
 MOUNTPOINT="/datadrive"
 RAIDCHUNKSIZE=128
@@ -27,6 +30,8 @@ check_os() {
     isubuntu=${?}
     grep centos /proc/version > /dev/null 2>&1
     iscentos=${?}
+    grep 'redhat' /proc/version > /dev/null 2>&1
+    isrhel=${?}
 }
 
 scan_for_new_disks() {
@@ -84,14 +89,14 @@ do_partition() {
     parted -s ${DISK} mklabel gpt
     parted -a opt -s ${DISK} mkpart primary 0% 100%
 
-# Use the bash-specific $PIPESTATUS to ensure we get the correct exit code
-# from fdisk and not from echo
-if [ ${PIPESTATUS[1]} -ne 0 ];
-then
-    echo "An error occurred partitioning ${DISK}" >&2
-    echo "I cannot continue" >&2
-    exit 2
-fi
+    # Use the bash-specific $PIPESTATUS to ensure we get the correct exit code
+    # from fdisk and not from echo
+    if [ ${PIPESTATUS[1]} -ne 0 ];
+    then
+        echo "An error occurred partitioning ${DISK}" >&2
+        echo "I cannot continue" >&2
+        exit 2
+    fi
 }
 
 add_to_fstab() {
@@ -107,6 +112,26 @@ add_to_fstab() {
     fi
 }
 
+partition_mountall_centos() {
+    echo "partition_mountall_centos"
+    DISKS=($(scan_for_new_disks))
+    for DISK in "${DISKS[@]}";
+    do 
+        echo "processing ${DISK}"
+        do_partition ${DISK}
+        PARTITION=$(ls ${DISK}?) 
+
+        echo "Creating filesystem on ${PARTITION}."
+        mkfs -t ext4 ${PARTITION}
+        mkdir "${MOUNTPOINT}-${DISK}"
+        read UUID FS_TYPE < <(blkid -u filesystem ${PARTITION}|awk -F "[= ]" '{print $3" "$5}'|tr -d "\"")
+        add_to_fstab "${UUID}" "${MOUNTPOINT}-${DISK}"
+        echo "Mounting disk ${PARTITION} on ${MOUNTPOINT}-${DISK}"
+        mount "${MOUNTPOINT}-${DISK}"
+    done;
+    echo "done partition_mountall_centos"
+}
+
 configure_disks() {
     ls "${MOUNTPOINT}"
     if [ ${?} -eq 0 ]
@@ -120,9 +145,10 @@ configure_disks() {
     echo "Disk count is $DISKCOUNT"
     if [ $DISKCOUNT -gt 1 ];
     then
-        if [ $iscentos -eq 0 ];
+        if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
         then
             create_raid0_centos
+            #partition_mountall_centos
         elif [ $isubuntu -eq 0 ];
         then
             create_raid0_ubuntu
@@ -132,7 +158,7 @@ configure_disks() {
     else
         DISK="${DISKS[0]}"
         do_partition ${DISK}
-        PARTITION=$(fdisk -l ${DISK}|grep -A 1 Device|tail -n 1|awk '{print $1}')
+        PARTITION=$(ls ${DISK}?)
     fi
 
     echo "Creating filesystem on ${PARTITION}."
@@ -145,6 +171,7 @@ configure_disks() {
 }
 
 open_ports() {
+    echo "open_ports"
     index=0
     while [ $index -lt $NODECOUNT ]; do
         if [ $index -ne $NODEINDEX ]; then
@@ -156,6 +183,7 @@ open_ports() {
         let index++
     done
     iptables-save
+    echo "done open_ports"
 }
 
 disable_apparmor_ubuntu() {
@@ -196,7 +224,7 @@ activate_secondnic_ubuntu() {
 
 configure_network() {
     open_ports
-    if [ $iscentos -eq 0 ];
+    if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
     then
         activate_secondnic_centos
         disable_selinux_centos
@@ -250,12 +278,28 @@ install_glusterfs_centos() {
     yum -y install glusterfs gluster-cli glusterfs-libs glusterfs-server
 }
 
+install_glusterfs_rhel() {
+    
+    echo "installing gluster"
+    yum -y install redhat-storage-server
+    echo "done installing gluster"
+}
+
 configure_gluster() {
     if [ $iscentos -eq 0 ];
     then
         install_glusterfs_centos
         systemctl enable glusterd
         systemctl start glusterd
+
+    elif [ $isrhel -eq 0 ];
+    then
+        echo 'isrhel'
+        install_glusterfs_rhel
+        systemctl enable glusterd
+        systemctl start glusterd
+        firewall-cmd --zone=public --add-port=24007-24008/tcp --permanent
+        firewall-cmd --reload
 
     elif [ $isubuntu -eq 0 ];
     then
@@ -278,7 +322,7 @@ configure_gluster() {
     then
         return
     fi
-    
+
     allNodes="${NODENAME}:${GLUSTERDIR}"
     retry=10
     failed=1
@@ -311,9 +355,11 @@ configure_gluster() {
     done
 
     sleep 60
+    echo "creating gluster volume"
     gluster volume create ${VOLUMENAME} rep 2 transport tcp ${allNodes} 2>> /tmp/error
     gluster volume info 2>> /tmp/error
     gluster volume start ${VOLUMENAME} 2>> /tmp/error
+    echo "done creating gluster volume"
 }
 
 allow_passwordssh() {
@@ -324,7 +370,7 @@ allow_passwordssh() {
     fi
     sed -i "s/^#PasswordAuthentication.*/PasswordAuthentication yes/I" /etc/ssh/sshd_config
     sed -i "s/^PasswordAuthentication no.*/PasswordAuthentication yes/I" /etc/ssh/sshd_config
-    if [ $iscentos -eq 0 ];
+    if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
     then
         /etc/init.d/sshd reload
     elif [ $isubuntu -eq 0 ];
@@ -333,16 +379,51 @@ allow_passwordssh() {
     fi
 }
 
+configure_rhsub(){
+    # Register Host with Cloud Access Subscription
+    echo $(date) " - Register host with Cloud Access Subscription"
+    subscription-manager register --username="$RHSMUSERNAME" --password="$RHSMPASSWORD"
+
+    if [ $? -eq 0 ]
+    then
+       echo "Subscribed successfully"
+    else
+       echo "Incorrect Username and Password specified"
+       exit 3
+    fi
+
+    subscription-manager attach --pool=$RHSMPOOLID > attach.log
+    if [ $? -eq 0 ]
+    then
+       echo "Pool attached successfully"
+    else
+       evaluate=$( cut -f 2-5 -d ' ' attach.log )
+       if [[ $evaluate == "unit has already had" ]]
+          then
+             echo "Pool $POOL_ID was already attached and was not attached again."
+          else
+             echo "Incorrect Pool ID or no entitlements available"
+             exit 4
+       fi
+    fi
+
+    echo "Enable RHEL repos"
+    subscription-manager repos --enable=rhel-7-server-rpms
+    subscription-manager repos --enable=rh-gluster-3-for-rhel-7-server-rpms
+    rpm -q kernel
+}
+
 check_os
 
 # temporary workaround form CRP 
 allow_passwordssh  
 
-if [ $iscentos -ne 0 ] && [ $isubuntu -ne 0];
+if [ $iscentos -ne 0 ] && [ $isubuntu -ne 0 ] && [ $isrhel -ne 0 ];
 then
     echo "unsupported operating system"
     exit 1 
 else
+    configure_rhsub
     configure_network
     configure_disks
     configure_gluster
