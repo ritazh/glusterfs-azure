@@ -299,6 +299,7 @@ configure_gluster() {
         systemctl enable glusterd
         systemctl start glusterd
         firewall-cmd --zone=public --add-port=24007-24008/tcp --permanent
+        firewall-cmd --zone=public --add-port=49152-49251/tcp --permanent
         firewall-cmd --reload
 
     elif [ $isubuntu -eq 0 ];
