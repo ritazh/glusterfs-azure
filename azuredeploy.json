@@ -54,10 +54,10 @@
       }
     },
 
-    "virtualNetworkName": {
+     "virtualNetworkName": {
       "type": "string",
       "metadata": {
-        "description": "virtual network the nodes will be created in"
+        "description": "virtual network the nodes will be created in, if k8s, use existing vnet"
       }
     },
     "adminUsername": {
@@ -92,16 +92,9 @@
         "description": "VM IP prefix, a number will be appened for each node"
       }
     },
-    "vnetAddressPrefix": {
-      "type": "string",
-      "defaultValue": "10.0.0.0/16",
-      "metadata": {
-        "description": "virtual network CIDR in which the cluster will be created"
-      }
-    },
     "gfsSubnetName": {
       "type": "string",
-      "defaultValue": "Subnet-1",
+      "defaultValue": "gluster-subnet",
       "metadata": {
         "description": "name of the subnet for the Gluster nodes"
       }
@@ -115,7 +108,7 @@
     },
     "customScriptFilePath": {
       "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/ritazh/glusterfs-azure/master/scripts/deploygluster.sh",
+      "defaultValue": "https://raw.githubusercontent.com/ritazh/glusterfs-azure/k8s/scripts/deploygluster.sh",
       "metadata": {
         "description": "GitHub location of the custom script that configures Gluster"
       }
@@ -182,23 +175,11 @@
   "resources": [
     {
       "apiVersion": "2015-05-01-preview",
-      "type": "Microsoft.Network/virtualNetworks",
-      "name": "[parameters('virtualNetworkName')]",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "name": "[concat(parameters('virtualNetworkName'), '/', parameters('gfsSubnetName'))]",
       "location": "[resourceGroup().location]",
       "properties": {
-        "addressSpace": {
-          "addressPrefixes": [
-            "[parameters('vnetAddressPrefix')]"
-          ]
-        },
-        "subnets": [
-          {
-            "name": "[parameters('gfsSubnetName')]",
-            "properties": {
-              "addressPrefix": "[parameters('gfsSubnetPrefix')]"
-            }
-          }
-        ]
+        "addressPrefix": "[parameters('gfsSubnetPrefix')]"
       }
     },
     {
@@ -224,7 +205,6 @@
         "count": "[parameters('nodeNumber')]"
       },
       "dependsOn": [
-        "[concat('Microsoft.Network/virtualNetworks/', parameters('virtualNetworkName'))]",
         "[concat('Microsoft.Network/publicIPAddresses/', variables('pipName'), copyindex())]"
       ],
       "properties": {
