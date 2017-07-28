@@ -14,13 +14,7 @@
         "description": "OS to install on the host system"
       }
     },
-    "storageAccountName": {
-      "type": "string",
-      "metadata": {
-        "description": "Prefix of storage account name, each node lives in its own storage account"
-      }
-    },
-    "scaleNumber": {
+    "nodeNumber": {
       "type": "int",
       "defaultValue": 2,
       "allowedValues": [
@@ -33,6 +27,33 @@
         "description": "Number of nodes in the gluster file system"
       }
     },
+    "diskNumber": {
+      "type": "int",
+      "defaultValue": 2,
+      "allowedValues": [
+        2,
+        3,
+        4
+      ],
+      "metadata": {
+        "description": "Number of disks per node"
+      }
+    },
+    
+
+    "diskSizeGB": {
+      "type": "int",
+      "defaultValue": 1023,
+      "allowedValues": [
+        1023,
+        2047,
+        4095
+      ],
+      "metadata": {
+        "description": "Number of disks per node"
+      }
+    },
+
     "virtualNetworkName": {
       "type": "string",
       "metadata": {
@@ -53,7 +74,7 @@
     },
     "vmSize": {
       "type": "string",
-      "defaultValue": "Standard_A1",
+      "defaultValue": "Standard_D2_v2",
       "metadata": {
         "description": "VM size for the nodes"
       }
@@ -160,19 +181,6 @@
   },
   "resources": [
     {
-      "type": "Microsoft.Storage/storageAccounts",
-      "name": "[concat(parameters('storageAccountName'), copyIndex())]",
-      "apiVersion": "2015-05-01-preview",
-      "location": "[resourceGroup().location]",
-      "copy": {
-        "name": "gfs",
-        "count": "[parameters('scaleNumber')]"
-      },
-      "properties": {
-        "accountType": "Standard_LRS"
-      }
-    },
-    {
       "apiVersion": "2015-05-01-preview",
       "type": "Microsoft.Network/virtualNetworks",
       "name": "[parameters('virtualNetworkName')]",
@@ -200,7 +208,7 @@
       "location": "[resourceGroup().location]",
       "copy": {
         "name": "foo",
-        "count": "[parameters('scaleNumber')]"
+        "count": "[parameters('nodeNumber')]"
       },
       "properties": {
         "publicIPAllocationMethod": "Dynamic"
@@ -213,7 +221,7 @@
       "location": "[resourceGroup().location]",
       "copy": {
         "name": "gfs",
-        "count": "[parameters('scaleNumber')]"
+        "count": "[parameters('nodeNumber')]"
       },
       "dependsOn": [
         "[concat('Microsoft.Network/virtualNetworks/', parameters('virtualNetworkName'))]",
@@ -238,17 +246,16 @@
       }
     },
     {
-      "apiVersion": "2015-05-01-preview",
+      "apiVersion": "2016-04-30-preview",
       "type": "Microsoft.Compute/virtualMachines",
       "name": "[concat(parameters('vmNamePrefix'), copyindex())]",
       "location": "[resourceGroup().location]",
       "copy": {
         "name": "gfs",
-        "count": "[parameters('scaleNumber')]"
+        "count": "[parameters('nodeNumber')]"
       },
       "dependsOn": [
-        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'), copyindex())]",
-        "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'), copyindex())]"
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'), copyindex())]"
       ],
       "properties": {
         "hardwareProfile": {
@@ -267,33 +274,18 @@
             "version": "[variables('osImageVersion')]"
           },
           "osDisk": {
-            "name": "osdisk",
-            "vhd": {
-              "uri": "[concat('http://',parameters('storageAccountName'), copyindex(), '.blob.core.windows.net/vhds/', parameters('vmNamePrefix'), copyIndex(), 'osdisk.vhd')]"
-            },
             "caching": "ReadWrite",
             "createOption": "FromImage"
           },
-          "dataDisks": [
-            {
-              "name": "datadisk1",
-              "diskSizeGB": "1000",
-              "lun": 0,
-              "vhd": {
-                "Uri": "[concat('http://', parameters('storageAccountName'), copyindex(),'.blob.core.windows.net/vhds/', parameters('vmNamePrefix'), copyIndex(), 'datadisk1.vhd')]"
-              },
-              "createOption": "Empty"
-            },
-            {
-              "name": "datadisk2",
-              "diskSizeGB": "1000",
-              "lun": 1,
-              "vhd": {
-                "Uri": "[concat('http://', parameters('storageAccountName'), copyindex(),'.blob.core.windows.net/vhds/', parameters('vmNamePrefix'), copyIndex(), 'datadisk2.vhd')]"
-              },
-              "createOption": "Empty"
-            }
-          ]
+          "copy": [{
+	        "name": "dataDisks",
+	        "count": "[parameters('diskNumber')]",
+	        "input": {
+	            "lun": "[copyIndex('dataDisks')]",
+	            "createOption": "Empty",
+	            "diskSizeGB": "1023"
+	        }
+	      }]
         },
         "networkProfile": {
           "networkInterfaces": [
@@ -311,7 +303,7 @@
       "location": "[resourceGroup().location]",
       "copy": {
         "name": "gfs",
-        "count": "[parameters('scaleNumber')]"
+        "count": "[parameters('nodeNumber')]"
       },
       "dependsOn": [
         "[concat('Microsoft.Compute/virtualMachines/', parameters('vmNamePrefix'), copyindex())]"
@@ -325,7 +317,7 @@
           "fileUris": [
             "[parameters('customScriptFilePath')]"
           ],
-          "commandToExecute": "[concat(parameters('customScriptCommandToExecute'), ' ', parameters('vmNamePrefix'), ' ', parameters('vmIPPrefix'), ' ', parameters('volumeName'), ' ', copyindex(), ' ', parameters('scaleNumber'), ' ', parameters('rhsmUsername'), ' ', parameters('rhsmPassword'), ' ', parameters('rhsmPoolId'))]"
+          "commandToExecute": "[concat(parameters('customScriptCommandToExecute'), ' ', parameters('vmNamePrefix'), ' ', parameters('vmIPPrefix'), ' ', parameters('volumeName'), ' ', copyindex(), ' ', parameters('nodeNumber'), ' ', parameters('rhsmUsername'), ' ', parameters('rhsmPassword'), ' ', parameters('rhsmPoolId'))]"
         }
       }
     }
