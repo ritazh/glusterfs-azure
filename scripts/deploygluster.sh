@@ -424,7 +424,10 @@ then
     echo "unsupported operating system"
     exit 1 
 else
-    configure_rhsub
+    if [ $isrhel -eq 0 ];
+    then
+        configure_rhsub
+    fi
     configure_network
     configure_disks
     configure_gluster
