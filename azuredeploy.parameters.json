@@ -5,6 +5,9 @@
     "virtualNetworkName": {
       "value": "testVnet"
     },
+    "virtualNetworkNewOrExisting": {
+      "value": "new"
+    },
     "adminUsername": {
       "value": "username"
     },

@@ -40,7 +40,6 @@
       }
     },
     
-
     "diskSizeGB": {
       "type": "int",
       "defaultValue": 1023,
@@ -54,12 +53,25 @@
       }
     },
 
-     "virtualNetworkName": {
+    "virtualNetworkName": {
       "type": "string",
       "metadata": {
-        "description": "virtual network the nodes will be created in, if k8s, use existing vnet"
+        "description": "virtual network the nodes will be created in. create a new one or provide an existing vnet."
       }
     },
+
+    "virtualNetworkNewOrExisting" : {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "create new or use existing Virtual Network."
+      }
+    },
+
     "adminUsername": {
       "type": "string",
       "metadata": {
@@ -90,6 +102,13 @@
       "defaultValue": "10.0.0.1",
       "metadata": {
         "description": "VM IP prefix, a number will be appened for each node"
+      }
+    },
+    "vnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "metadata": {
+        "description": "virtual network CIDR in which the cluster will be created"
       }
     },
     "gfsSubnetName": {
@@ -174,7 +193,30 @@
   },
   "resources": [
     {
-      "apiVersion": "2015-05-01-preview",
+      "condition": "[equals(parameters('virtualNetworkNewOrExisting'),'new')]",
+      "apiVersion": "2017-06-01",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[parameters('virtualNetworkName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetAddressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('gfsSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('gfsSubnetPrefix')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "condition": "[equals(parameters('virtualNetworkNewOrExisting'),'existing')]",
+      "apiVersion": "2017-06-01",
       "type": "Microsoft.Network/virtualNetworks/subnets",
       "name": "[concat(parameters('virtualNetworkName'), '/', parameters('gfsSubnetName'))]",
       "location": "[resourceGroup().location]",
