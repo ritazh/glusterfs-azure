@@ -11,8 +11,8 @@
     "adminUsername": {
       "value": "username"
     },
-    "adminPassword": {
-      "value": "password"
+    "sshKeyData": {
+      "value": "SSH-PUB-KEY"
     },
     "vmNamePrefix": {
       "value": "testVM"

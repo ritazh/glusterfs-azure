@@ -363,23 +363,6 @@ configure_gluster() {
     echo "done creating gluster volume"
 }
 
-allow_passwordssh() {
-    grep -q '^PasswordAuthentication yes' /etc/ssh/sshd_config
-    if [ ${?} -eq 0 ];
-    then
-        return
-    fi
-    sed -i "s/^#PasswordAuthentication.*/PasswordAuthentication yes/I" /etc/ssh/sshd_config
-    sed -i "s/^PasswordAuthentication no.*/PasswordAuthentication yes/I" /etc/ssh/sshd_config
-    if [ $iscentos -eq 0 -o $isrhel -eq 0 ];
-    then
-        /etc/init.d/sshd reload
-    elif [ $isubuntu -eq 0 ];
-    then
-        /etc/init.d/ssh reload
-    fi
-}
-
 configure_rhsub(){
     # Register Host with Cloud Access Subscription
     echo $(date) " - Register host with Cloud Access Subscription"
@@ -415,9 +398,6 @@ configure_rhsub(){
 }
 
 check_os
-
-# temporary workaround form CRP 
-allow_passwordssh  
 
 if [ $iscentos -ne 0 ] && [ $isubuntu -ne 0 ] && [ $isrhel -ne 0 ];
 then

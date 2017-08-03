@@ -78,10 +78,10 @@
         "description": "ssh user name"
       }
     },
-    "adminPassword": {
-      "type": "securestring",
+    "sshKeyData": {
+      "type": "string",
       "metadata": {
-        "description": "ssh password"
+        "description": "SSH rsa public key file as a string."
       }
     },
     "vmSize": {
@@ -189,7 +189,8 @@
     "osImagePublisher": "[variables(concat('osImage', parameters('hostOs'), 'Publisher'))]",
     "osImageOffer": "[variables(concat('osImage', parameters('hostOs'), 'Offer'))]",
     "osImageSKU": "[variables(concat('osImage', parameters('hostOs'), 'SKU'))]",
-    "osImageVersion": "[variables(concat('osImage', parameters('hostOs'), 'version'))]"
+    "osImageVersion": "[variables(concat('osImage', parameters('hostOs'), 'version'))]",
+    "sshKeyPath": "[concat('/home/',parameters('adminUserName'),'/.ssh/authorized_keys')]"
   },
   "resources": [
     {
@@ -286,7 +287,17 @@
         "osProfile": {
           "computerName": "[concat(parameters('vmNamePrefix'), copyIndex())]",
           "adminUsername": "[parameters('adminUsername')]",
-          "adminPassword": "[parameters('adminPassword')]"
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "keyData": "[parameters('sshKeyData')]",
+                  "path": "[variables('sshKeyPath')]"
+                }
+              ]
+            }
+          }
         },
         "storageProfile": {
           "imageReference": {
